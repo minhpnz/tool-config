@@ -79,7 +79,7 @@ echo "  🔐  Preparing permissions..."
 tccutil reset Accessibility com.minhphan.ipa-keyboard > /dev/null 2>&1 || true
 echo "     Done."
 
-# ⑥ Launch and wait for Accessibility
+# ⑥ Launch and wait for Accessibility, then restart
 echo ""
 echo "  🚀  Launching $APP_NAME..."
 open -a "$APP_NAME"
@@ -98,16 +98,19 @@ echo "  │  3. Navigate to Applications →               │"
 echo "  │     select 'IPA Keyboard'                    │"
 echo "  │  4. Toggle it ON                             │"
 echo "  │                                              │"
-echo "  │  After granting, the app will restart        │"
-echo "  │  automatically.                              │"
-echo "  │                                              │"
 echo "  │  Waiting up to 5 minutes...                  │"
 echo "  └──────────────────────────────────────────────┘"
 echo ""
 
 echo ""
-echo "     After granting permission, restart the app to activate."
+read -p "  ✋  Press Enter after granting permission... " _
 echo ""
+echo "  🔄  Restarting $APP_NAME..."
+pkill -f "$APP_NAME" 2>/dev/null || true
+sleep 1
+open -a "$APP_NAME"
+sleep 2
+echo "     $APP_NAME is ready!"
 
 echo ""
 echo "  ╔══════════════════════════════════════════════╗"
