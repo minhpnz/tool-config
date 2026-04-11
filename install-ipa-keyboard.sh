@@ -8,87 +8,141 @@ GDRIVE_ID="1I44mKnL3hwI1sSn3gDGfUu6H9yItDKOy"
 TMP_DMG="/tmp/$DMG_NAME"
 
 echo ""
-echo "============================================"
-echo "  IPA Keyboard Installer"
-echo "============================================"
+echo "  ╔══════════════════════════════════════════════╗"
+echo "  ║                                              ║"
+echo "  ║   ██╗██████╗  █████╗                         ║"
+echo "  ║   ██║██╔══██╗██╔══██╗                        ║"
+echo "  ║   ██║██████╔╝███████║                        ║"
+echo "  ║   ██║██╔═══╝ ██╔══██║                        ║"
+echo "  ║   ██║██║     ██║  ██║                        ║"
+echo "  ║   ╚═╝╚═╝     ╚═╝  ╚═╝  K E Y B O A R D     ║"
+echo "  ║                                              ║"
+echo "  ║          Developed by Henry Phan             ║"
+echo "  ║   Type IPA symbols with your keyboard ✦     ║"
+echo "  ║                                              ║"
+echo "  ╚══════════════════════════════════════════════╝"
 echo ""
 
-# Kill running instance if any
+# ① Stop running instance
 if pgrep -f "$APP_NAME" > /dev/null 2>&1; then
-    echo "[1/6] Stopping running instance of $APP_NAME..."
+    echo "  ⏹  Stopping running instance..."
     pkill -f "$APP_NAME" 2>/dev/null || true
     sleep 1
-    echo "       Done."
+    echo "     Done."
 else
-    echo "[1/6] No running instance found. Skipping."
+    echo "  ✓  No running instance detected."
 fi
 
-# Download from Google Drive
+# ② Download
 echo ""
-echo "[2/6] Downloading $APP_NAME from server..."
-echo "       This may take a minute depending on your internet speed."
+echo "  📦  Downloading latest version..."
 COOKIES="/tmp/gdrive_cookies_$$"
 
 curl -fsSL -c "$COOKIES" "https://drive.google.com/uc?export=download&id=$GDRIVE_ID" -o /tmp/gdrive_page.html
-
 UUID=$(grep -o 'uuid=[^"&]*' /tmp/gdrive_page.html | head -1 | cut -d= -f2)
-
 curl -fSL -b "$COOKIES" \
     "https://drive.usercontent.google.com/download?id=$GDRIVE_ID&export=download&confirm=t&uuid=$UUID" \
     -o "$TMP_DMG"
-
 rm -f "$COOKIES" /tmp/gdrive_page.html
 
 if head -c 100 "$TMP_DMG" | grep -qi "html"; then
     echo ""
-    echo "ERROR: Download failed."
-    echo "       The file could not be downloaded from Google Drive."
-    echo "       Please check your internet connection and try again."
+    echo "  ✗  Download failed. Please check your internet connection."
     rm -f "$TMP_DMG"
     exit 1
 fi
+echo "     Done."
 
-echo "       Download complete."
-
-# Remove old installation
+# ③ Remove old version
 echo ""
 if [ -d "$INSTALL_DIR/$APP_NAME.app" ]; then
-    echo "[3/6] Removing previous version of $APP_NAME..."
+    echo "  🗑  Removing previous version..."
     rm -rf "$INSTALL_DIR/$APP_NAME.app"
-    echo "       Previous version removed."
+    echo "     Done."
 else
-    echo "[3/6] No previous version found. Clean install."
+    echo "  ✓  No previous version — clean install."
 fi
 
-# Mount DMG and copy app
+# ④ Install
 echo ""
-echo "[4/6] Installing $APP_NAME to $INSTALL_DIR..."
+echo "  📲  Installing to $INSTALL_DIR..."
 MOUNT_POINT=$(hdiutil attach "$TMP_DMG" -nobrowse -noverify | grep '/Volumes/' | sed 's/.*\(\/Volumes\/.*\)/\1/')
-
 cp -R "$MOUNT_POINT/$APP_NAME.app" "$INSTALL_DIR/"
 xattr -cr "$INSTALL_DIR/$APP_NAME.app"
-
 hdiutil detach "$MOUNT_POINT" -quiet
 rm -f "$TMP_DMG"
-echo "       $APP_NAME has been installed to $INSTALL_DIR."
+echo "     Done."
 
-# Reset old Accessibility entry to avoid duplicates
+# ⑤ Reset Accessibility (clean slate)
 echo ""
-echo "[5/6] Resetting Accessibility permission for clean setup..."
-tccutil reset Accessibility com.minhphan.ipa-keyboard 2>/dev/null || true
-echo "       Done."
+echo "  🔐  Preparing permissions..."
+tccutil reset Accessibility com.minhphan.ipa-keyboard > /dev/null 2>&1 || true
+echo "     Done."
 
-# Launch the app
+# ⑥ Launch and wait for Accessibility
 echo ""
-echo "[6/6] Launching $APP_NAME..."
-open -a "$APP_NAME"
-echo "       $APP_NAME is now running."
-echo "       If prompted, grant Accessibility permission and restart the app."
+echo "  🚀  Launching $APP_NAME..."
+
+APP_BIN="$INSTALL_DIR/$APP_NAME.app/Contents/MacOS/ipa-keyboard"
+"$APP_BIN" 2>/tmp/ipa_keyboard_log.$$ &
+APP_PID=$!
+sleep 2
+
 echo ""
-echo "============================================"
-echo "  Installation complete!"
+echo "  ┌──────────────────────────────────────────────┐"
+echo "  │  🔓  Accessibility Permission Required       │"
+echo "  │                                              │"
+echo "  │  A system dialog should appear.              │"
+echo "  │  Click 'Open System Settings' and            │"
+echo "  │  toggle ON 'IPA Keyboard'.                   │"
+echo "  │                                              │"
+echo "  │  Waiting up to 5 minutes...                  │"
+echo "  └──────────────────────────────────────────────┘"
 echo ""
-echo "  Shortcut: Ctrl + letter to type IPA symbols"
-echo "  Toggle:   Ctrl + Space to turn on/off"
-echo "============================================"
+
+TIMEOUT=300
+ELAPSED=0
+GRANTED=false
+
+while [ $ELAPSED -lt $TIMEOUT ]; do
+    if grep -q "Event tap installed" /tmp/ipa_keyboard_log.$$ 2>/dev/null; then
+        GRANTED=true
+        break
+    fi
+    if ! kill -0 $APP_PID 2>/dev/null; then
+        "$APP_BIN" 2>/tmp/ipa_keyboard_log.$$ &
+        APP_PID=$!
+        sleep 2
+    fi
+    MINS=$((ELAPSED / 60))
+    SECS=$((ELAPSED % 60))
+    TOTAL_MINS=$((TIMEOUT / 60))
+    printf "\r     ⏳  %d:%02d / %d:00  " "$MINS" "$SECS" "$TOTAL_MINS"
+    sleep 3
+    ELAPSED=$((ELAPSED + 3))
+done
+rm -f /tmp/ipa_keyboard_log.$$
+
+echo ""
+echo ""
+if [ "$GRANTED" = true ]; then
+    echo "  ✅  Permission granted — app is running!"
+else
+    echo "  ⚠️   Timed out. You can grant permission later:"
+    echo "     System Settings → Privacy & Security → Accessibility"
+    echo "     Then restart the app."
+fi
+
+echo ""
+echo "  ╔══════════════════════════════════════════════╗"
+echo "  ║                                              ║"
+echo "  ║   ✅  Installation Complete!                 ║"
+echo "  ║                                              ║"
+echo "  ║   Ctrl + letter   →  type IPA symbols        ║"
+echo "  ║   Ctrl + A        →  æ → ɑ → ɑː → ʌ        ║"
+echo "  ║   Ctrl + Space    →  toggle on/off           ║"
+echo "  ║                                              ║"
+echo "  ║   Enjoy! 🎉                                  ║"
+echo "  ║                                              ║"
+echo "  ╚══════════════════════════════════════════════╝"
 echo ""
