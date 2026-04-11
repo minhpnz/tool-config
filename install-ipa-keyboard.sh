@@ -76,37 +76,11 @@ echo "       $APP_NAME has been installed to $INSTALL_DIR."
 echo ""
 echo "[5/6] Setting up Accessibility permission..."
 echo "       This allows $APP_NAME to listen for keyboard shortcuts."
-APP_PATH="$INSTALL_DIR/$APP_NAME.app"
-BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "com.minhphan.ipa-keyboard")
-TCC_DB="/Library/Application Support/com.apple.TCC/TCC.db"
-
-TCC_OK=false
-if [ -f "$TCC_DB" ]; then
-    # Run sqlite3 with a 3-second timeout (macOS SIP can cause it to hang)
-    sqlite3 "$TCC_DB" ".timeout 2000" "DELETE FROM access WHERE client='$BUNDLE_ID' AND service='kTCCServiceAccessibility';" 2>/dev/null &
-    PID=$!; sleep 3; kill $PID 2>/dev/null; wait $PID 2>/dev/null
-
-    sqlite3 "$TCC_DB" ".timeout 2000" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier_type, flags) VALUES ('kTCCServiceAccessibility', '$BUNDLE_ID', 0, 2, 3, 1, 0, 0);" 2>/dev/null &
-    PID=$!; sleep 3
-    if kill -0 $PID 2>/dev/null; then
-        kill $PID 2>/dev/null; wait $PID 2>/dev/null
-    else
-        wait $PID 2>/dev/null
-        [ $? -eq 0 ] && TCC_OK=true
-    fi
-fi
-
-if [ "$TCC_OK" = true ]; then
-    echo "       Accessibility permission granted automatically."
-else
-    echo "       macOS blocked automatic permission (SIP protected)."
-    echo ""
-    echo "       Opening System Settings for you..."
-    sudo -u "${SUDO_USER:-$USER}" open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-    echo ""
-    echo "       >>> Please toggle ON '$APP_NAME' in the list. <<<"
-    echo "       >>> Then you can close System Settings.        <<<"
-fi
+echo "       Opening System Settings → Accessibility..."
+sudo -u "${SUDO_USER:-$USER}" open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+echo ""
+echo "       >>> Please toggle ON '$APP_NAME' in the list. <<<"
+echo "       >>> Then you can close System Settings.        <<<"
 
 # Done
 echo ""
