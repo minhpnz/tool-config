@@ -74,23 +74,30 @@ echo "       $APP_NAME has been installed to $INSTALL_DIR."
 
 # Grant Accessibility permission
 echo ""
-echo "[5/6] Granting Accessibility permission..."
+echo "[5/6] Setting up Accessibility permission..."
 echo "       This allows $APP_NAME to listen for keyboard shortcuts."
 APP_PATH="$INSTALL_DIR/$APP_NAME.app"
 BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "com.minhphan.ipa-keyboard")
 TCC_DB="/Library/Application Support/com.apple.TCC/TCC.db"
 
-sqlite3 "$TCC_DB" "DELETE FROM access WHERE client='$BUNDLE_ID' AND service='kTCCServiceAccessibility';" 2>/dev/null || true
-sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier_type, flags) VALUES ('kTCCServiceAccessibility', '$BUNDLE_ID', 0, 2, 3, 1, 0, 0);" 2>/dev/null
+TCC_OK=false
+if [ -f "$TCC_DB" ]; then
+    sqlite3 "$TCC_DB" "DELETE FROM access WHERE client='$BUNDLE_ID' AND service='kTCCServiceAccessibility';" 2>/dev/null || true
+    if sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier_type, flags) VALUES ('kTCCServiceAccessibility', '$BUNDLE_ID', 0, 2, 3, 1, 0, 0);" 2>/dev/null; then
+        TCC_OK=true
+    fi
+fi
 
-if [ $? -eq 0 ]; then
-    echo "       Accessibility permission granted successfully."
+if [ "$TCC_OK" = true ]; then
+    echo "       Accessibility permission granted automatically."
 else
-    echo "       Could not grant Accessibility permission automatically."
-    echo "       Please enable it manually:"
-    echo "         1. Open System Settings"
-    echo "         2. Go to Privacy & Security → Accessibility"
-    echo "         3. Toggle ON '$APP_NAME'"
+    echo "       macOS blocked automatic permission (SIP protected)."
+    echo ""
+    echo "       Opening System Settings for you..."
+    sudo -u "${SUDO_USER:-$USER}" open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+    echo ""
+    echo "       >>> Please toggle ON '$APP_NAME' in the list. <<<"
+    echo "       >>> Then you can close System Settings.        <<<"
 fi
 
 # Done
