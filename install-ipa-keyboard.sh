@@ -15,17 +15,17 @@ echo ""
 
 # Kill running instance if any
 if pgrep -f "$APP_NAME" > /dev/null 2>&1; then
-    echo "[1/5] Stopping running instance of $APP_NAME..."
+    echo "[1/6] Stopping running instance of $APP_NAME..."
     pkill -f "$APP_NAME" 2>/dev/null || true
     sleep 1
     echo "       Done."
 else
-    echo "[1/5] No running instance found. Skipping."
+    echo "[1/6] No running instance found. Skipping."
 fi
 
 # Download from Google Drive
 echo ""
-echo "[2/5] Downloading $APP_NAME from server..."
+echo "[2/6] Downloading $APP_NAME from server..."
 echo "       This may take a minute depending on your internet speed."
 COOKIES="/tmp/gdrive_cookies_$$"
 
@@ -53,16 +53,16 @@ echo "       Download complete."
 # Remove old installation
 echo ""
 if [ -d "$INSTALL_DIR/$APP_NAME.app" ]; then
-    echo "[3/5] Removing previous version of $APP_NAME..."
+    echo "[3/6] Removing previous version of $APP_NAME..."
     rm -rf "$INSTALL_DIR/$APP_NAME.app"
     echo "       Previous version removed."
 else
-    echo "[3/5] No previous version found. Clean install."
+    echo "[3/6] No previous version found. Clean install."
 fi
 
 # Mount DMG and copy app
 echo ""
-echo "[4/5] Installing $APP_NAME to $INSTALL_DIR..."
+echo "[4/6] Installing $APP_NAME to $INSTALL_DIR..."
 MOUNT_POINT=$(hdiutil attach "$TMP_DMG" -nobrowse -noverify | grep '/Volumes/' | sed 's/.*\(\/Volumes\/.*\)/\1/')
 
 cp -R "$MOUNT_POINT/$APP_NAME.app" "$INSTALL_DIR/"
@@ -72,9 +72,15 @@ hdiutil detach "$MOUNT_POINT" -quiet
 rm -f "$TMP_DMG"
 echo "       $APP_NAME has been installed to $INSTALL_DIR."
 
+# Reset old Accessibility entry to avoid duplicates
+echo ""
+echo "[5/6] Resetting Accessibility permission for clean setup..."
+tccutil reset Accessibility com.minhphan.ipa-keyboard 2>/dev/null || true
+echo "       Done."
+
 # Launch the app
 echo ""
-echo "[5/5] Launching $APP_NAME..."
+echo "[6/6] Launching $APP_NAME..."
 open -a "$APP_NAME"
 echo "       $APP_NAME is now running."
 echo "       If prompted, grant Accessibility permission and restart the app."
