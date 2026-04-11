@@ -82,19 +82,24 @@ echo "     Done."
 # ⑥ Launch and wait for Accessibility
 echo ""
 echo "  🚀  Launching $APP_NAME..."
-
-APP_BIN="$INSTALL_DIR/$APP_NAME.app/Contents/MacOS/ipa-keyboard"
-"$APP_BIN" 2>/tmp/ipa_keyboard_log.$$ &
-APP_PID=$!
-sleep 2
+open -a "$APP_NAME"
+sleep 3
 
 echo ""
 echo "  ┌──────────────────────────────────────────────┐"
 echo "  │  🔓  Accessibility Permission Required       │"
 echo "  │                                              │"
-echo "  │  A system dialog should appear.              │"
-echo "  │  Click 'Open System Settings' and            │"
-echo "  │  toggle ON 'IPA Keyboard'.                   │"
+echo "  │  A system dialog should have appeared.       │"
+echo "  │                                              │"
+echo "  │  1. Click 'Open System Settings'             │"
+echo "  │  2. Click '+' to add the app manually        │"
+echo "  │     if it's not in the list                  │"
+echo "  │  3. Navigate to Applications →               │"
+echo "  │     select 'IPA Keyboard'                    │"
+echo "  │  4. Toggle it ON                             │"
+echo "  │                                              │"
+echo "  │  After granting, the app will restart        │"
+echo "  │  automatically.                              │"
 echo "  │                                              │"
 echo "  │  Waiting up to 5 minutes...                  │"
 echo "  └──────────────────────────────────────────────┘"
@@ -103,25 +108,33 @@ echo ""
 TIMEOUT=300
 ELAPSED=0
 GRANTED=false
+LOG_FILE="/tmp/ipa_keyboard_log.$$"
 
 while [ $ELAPSED -lt $TIMEOUT ]; do
-    if grep -q "Event tap installed" /tmp/ipa_keyboard_log.$$ 2>/dev/null; then
+    # Check if event tap is working via system log
+    if log show --predicate 'process == "ipa-keyboard"' --last 5s --style compact 2>/dev/null | grep -q "Event tap installed"; then
         GRANTED=true
         break
     fi
-    if ! kill -0 $APP_PID 2>/dev/null; then
-        "$APP_BIN" 2>/tmp/ipa_keyboard_log.$$ &
-        APP_PID=$!
+    # Also try relaunching and checking stderr
+    if ! pgrep -f "$APP_NAME" > /dev/null 2>&1; then
+        pkill -f "ipa-keyboard" 2>/dev/null || true
+        sleep 1
+        "$INSTALL_DIR/$APP_NAME.app/Contents/MacOS/ipa-keyboard" 2>"$LOG_FILE" &
         sleep 2
+        if grep -q "Event tap installed" "$LOG_FILE" 2>/dev/null; then
+            GRANTED=true
+            break
+        fi
     fi
     MINS=$((ELAPSED / 60))
     SECS=$((ELAPSED % 60))
     TOTAL_MINS=$((TIMEOUT / 60))
     printf "\r     ⏳  %d:%02d / %d:00  " "$MINS" "$SECS" "$TOTAL_MINS"
-    sleep 3
-    ELAPSED=$((ELAPSED + 3))
+    sleep 5
+    ELAPSED=$((ELAPSED + 5))
 done
-rm -f /tmp/ipa_keyboard_log.$$
+rm -f "$LOG_FILE"
 
 echo ""
 echo ""
@@ -130,6 +143,7 @@ if [ "$GRANTED" = true ]; then
 else
     echo "  ⚠️   Timed out. You can grant permission later:"
     echo "     System Settings → Privacy & Security → Accessibility"
+    echo "     Click '+' → select IPA Keyboard from Applications"
     echo "     Then restart the app."
 fi
 
