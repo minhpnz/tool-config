@@ -82,9 +82,17 @@ TCC_DB="/Library/Application Support/com.apple.TCC/TCC.db"
 
 TCC_OK=false
 if [ -f "$TCC_DB" ]; then
-    sqlite3 "$TCC_DB" "DELETE FROM access WHERE client='$BUNDLE_ID' AND service='kTCCServiceAccessibility';" 2>/dev/null || true
-    if sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier_type, flags) VALUES ('kTCCServiceAccessibility', '$BUNDLE_ID', 0, 2, 3, 1, 0, 0);" 2>/dev/null; then
-        TCC_OK=true
+    # Run sqlite3 with a 3-second timeout (macOS SIP can cause it to hang)
+    sqlite3 "$TCC_DB" ".timeout 2000" "DELETE FROM access WHERE client='$BUNDLE_ID' AND service='kTCCServiceAccessibility';" 2>/dev/null &
+    PID=$!; sleep 3; kill $PID 2>/dev/null; wait $PID 2>/dev/null
+
+    sqlite3 "$TCC_DB" ".timeout 2000" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier_type, flags) VALUES ('kTCCServiceAccessibility', '$BUNDLE_ID', 0, 2, 3, 1, 0, 0);" 2>/dev/null &
+    PID=$!; sleep 3
+    if kill -0 $PID 2>/dev/null; then
+        kill $PID 2>/dev/null; wait $PID 2>/dev/null
+    else
+        wait $PID 2>/dev/null
+        [ $? -eq 0 ] && TCC_OK=true
     fi
 fi
 
