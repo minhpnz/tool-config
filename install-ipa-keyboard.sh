@@ -7,48 +7,38 @@ INSTALL_DIR="/Applications"
 GDRIVE_ID="1I44mKnL3hwI1sSn3gDGfUu6H9yItDKOy"
 TMP_DMG="/tmp/$DMG_NAME"
 
-# ── Colors ──
-B="\033[1m"
-D="\033[2m"
-G="\033[32m"
-Y="\033[33m"
-C="\033[36m"
-R="\033[31m"
-N="\033[0m"
-
 clear
 echo ""
-echo "  ╔════════════════════════════════════════════╗"
-echo "  ║                                            ║"
-echo "  ║   ██╗██████╗  █████╗                       ║"
-echo "  ║   ██║██╔══██╗██╔══██╗                      ║"
-echo "  ║   ██║██████╔╝███████║                       ║"
-echo "  ║   ██║██╔═══╝ ██╔══██║                       ║"
-echo "  ║   ██║██║     ██║  ██║                       ║"
-echo "  ║   ╚═╝╚═╝     ╚═╝  ╚═╝  K E Y B O A R D    ║"
-echo "  ║                                            ║"
-echo "  ║   Developed by Henry Phan                  ║"
-echo "  ║   Type IPA symbols with your keyboard      ║"
-echo "  ║                                            ║"
-echo "  ╚════════════════════════════════════════════╝"
+echo "  =========================================="
+echo ""
+echo "    ___ ____   _"
+echo "   |_ _|  _ \ / \\"
+echo "    | || |_) / _ \\"
+echo "    | ||  __/ ___ \\    K E Y B O A R D"
+echo "   |___|_| /_/   \_\\"
+echo ""
+echo "    Developed by Henry Phan"
+echo "    Type IPA symbols with your keyboard"
+echo ""
+echo "  =========================================="
 echo ""
 sleep 1
 
-# ── Step 1: Stop running instance ──
-echo -e "  ${B}[1/5]${N} Checking for running instance..."
+# -- Step 1 --
+echo "  [1/5] Checking for running instance..."
 if pgrep -f "$APP_NAME" > /dev/null 2>&1; then
-    echo -e "        Stopping running instance..."
+    echo "         Stopping running instance..."
     pkill -f "$APP_NAME" 2>/dev/null || true
     sleep 1
-    echo -e "  ${G}  ✓   Stopped.${N}"
+    echo "    OK   Stopped."
 else
-    echo -e "  ${G}  ✓   No running instance.${N}"
+    echo "    OK   No running instance."
 fi
 
-# ── Step 2: Download ──
+# -- Step 2 --
 echo ""
-echo -e "  ${B}[2/5]${N} Downloading latest version..."
-echo -e "  ${D}      This may take a moment...${N}"
+echo "  [2/5] Downloading latest version..."
+echo "         This may take a moment..."
 COOKIES="/tmp/gdrive_cookies_$$"
 
 curl -fsSL -c "$COOKIES" "https://drive.google.com/uc?export=download&id=$GDRIVE_ID" -o /tmp/gdrive_page.html
@@ -60,70 +50,70 @@ rm -f "$COOKIES" /tmp/gdrive_page.html
 
 if head -c 100 "$TMP_DMG" | grep -qi "html"; then
     echo ""
-    echo -e "  ${R}  ✗   Download failed.${N}"
-    echo -e "  ${D}      Please check your internet connection and try again.${N}"
+    echo "    !!   Download failed."
+    echo "         Please check your internet connection and try again."
     rm -f "$TMP_DMG"
     exit 1
 fi
-echo -e "  ${G}  ✓   Downloaded successfully.${N}"
+echo "    OK   Downloaded successfully."
 
-# ── Step 3: Remove old version ──
+# -- Step 3 --
 echo ""
-echo -e "  ${B}[3/5]${N} Preparing installation..."
+echo "  [3/5] Preparing installation..."
 if [ -d "$INSTALL_DIR/$APP_NAME.app" ]; then
-    echo -e "        Removing previous version..."
+    echo "         Removing previous version..."
     rm -rf "$INSTALL_DIR/$APP_NAME.app"
-    echo -e "  ${G}  ✓   Previous version removed.${N}"
+    echo "    OK   Previous version removed."
 else
-    echo -e "  ${G}  ✓   Fresh install.${N}"
+    echo "    OK   Fresh install."
 fi
 
-# ── Step 4: Install ──
+# -- Step 4 --
 echo ""
-echo -e "  ${B}[4/5]${N} Installing to $INSTALL_DIR..."
+echo "  [4/5] Installing to $INSTALL_DIR..."
 MOUNT_POINT=$(hdiutil attach "$TMP_DMG" -nobrowse -noverify | grep '/Volumes/' | sed 's/.*\(\/Volumes\/.*\)/\1/')
 cp -R "$MOUNT_POINT/$APP_NAME.app" "$INSTALL_DIR/"
 xattr -cr "$INSTALL_DIR/$APP_NAME.app"
 hdiutil detach "$MOUNT_POINT" -quiet
 rm -f "$TMP_DMG"
 tccutil reset Accessibility com.minhphan.ipa-keyboard > /dev/null 2>&1 || true
-echo -e "  ${G}  ✓   Installed.${N}"
+echo "    OK   Installed."
 
-# ── Step 5: Launch & Accessibility ──
+# -- Step 5 --
 echo ""
-echo -e "  ${B}[5/5]${N} Launching $APP_NAME..."
+echo "  [5/5] Launching $APP_NAME..."
 open -a "$APP_NAME"
 sleep 2
 
 echo ""
-echo "  ┌────────────────────────────────────────────┐"
-echo "  │                                            │"
-echo "  │   One more thing!                          │"
-echo "  │                                            │"
-echo "  │   A popup is asking for Accessibility      │"
-echo "  │   permission. This lets IPA Keyboard       │"
-echo "  │   read your keystrokes.                    │"
-echo "  │                                            │"
-echo "  │   1. Click 'Open System Settings'          │"
-echo "  │   2. Toggle ON next to 'IPA Keyboard'      │"
-echo "  │   3. That's it! It works immediately       │"
-echo "  │                                            │"
-echo "  │   No restart needed — just toggle and go.  │"
-echo "  │                                            │"
-echo "  └────────────────────────────────────────────┘"
+echo "  ------------------------------------------"
+echo ""
+echo "    One more thing!"
+echo ""
+echo "    A popup is asking for Accessibility"
+echo "    permission. This lets IPA Keyboard"
+echo "    read your keystrokes."
+echo ""
+echo "    1. Click 'Open System Settings'"
+echo "    2. Toggle ON next to 'IPA Keyboard'"
+echo "    3. That's it! It works immediately"
+echo ""
+echo "    No restart needed -- just toggle and go."
+echo ""
+echo "  ------------------------------------------"
 
 echo ""
-echo "  ╔════════════════════════════════════════════╗"
-echo "  ║                                            ║"
-echo "  ║   Installation Complete!                   ║"
-echo "  ║                                            ║"
-echo "  ║   How to use:                              ║"
-echo "  ║                                            ║"
-echo "  ║   Ctrl + letter    type IPA symbols        ║"
-echo "  ║   Ctrl + A         æ → ɑ → ɑː → ʌ        ║"
-echo "  ║   Ctrl + Space     toggle on/off           ║"
-echo "  ║                                            ║"
-echo "  ║   Look for the IPA icon in your menu bar.  ║"
-echo "  ║                                            ║"
-echo "  ╚════════════════════════════════════════════╝"
+echo "  =========================================="
+echo ""
+echo "    Installation Complete!"
+echo ""
+echo "    How to use:"
+echo ""
+echo "    Ctrl + letter    type IPA symbols"
+echo "    Ctrl + A         a -> ae -> open-a"
+echo "    Ctrl + Space     toggle on/off"
+echo ""
+echo "    Look for the IPA icon in your menu bar."
+echo ""
+echo "  =========================================="
 echo ""
