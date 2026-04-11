@@ -108,24 +108,18 @@ echo ""
 TIMEOUT=300
 ELAPSED=0
 GRANTED=false
-LOG_FILE="/tmp/ipa_keyboard_log.$$"
 
 while [ $ELAPSED -lt $TIMEOUT ]; do
+    # Stop waiting if app was closed or uninstalled
+    if ! pgrep -f "$APP_NAME" > /dev/null 2>&1; then
+        echo ""
+        echo "  ℹ️   App was closed. Skipping permission check."
+        break
+    fi
     # Check if event tap is working via system log
     if log show --predicate 'process == "ipa-keyboard"' --last 5s --style compact 2>/dev/null | grep -q "Event tap installed"; then
         GRANTED=true
         break
-    fi
-    # Also try relaunching and checking stderr
-    if ! pgrep -f "$APP_NAME" > /dev/null 2>&1; then
-        pkill -f "ipa-keyboard" 2>/dev/null || true
-        sleep 1
-        "$INSTALL_DIR/$APP_NAME.app/Contents/MacOS/ipa-keyboard" 2>"$LOG_FILE" &
-        sleep 2
-        if grep -q "Event tap installed" "$LOG_FILE" 2>/dev/null; then
-            GRANTED=true
-            break
-        fi
     fi
     MINS=$((ELAPSED / 60))
     SECS=$((ELAPSED % 60))
@@ -134,7 +128,6 @@ while [ $ELAPSED -lt $TIMEOUT ]; do
     sleep 5
     ELAPSED=$((ELAPSED + 5))
 done
-rm -f "$LOG_FILE"
 
 echo ""
 echo ""
