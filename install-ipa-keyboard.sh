@@ -72,27 +72,30 @@ hdiutil detach "$MOUNT_POINT" -quiet
 rm -f "$TMP_DMG"
 echo "       $APP_NAME has been installed to $INSTALL_DIR."
 
-# Grant Accessibility permission
+# Launch the app so macOS registers it for Accessibility
 echo ""
-echo "[5/6] Setting up Accessibility permission..."
+echo "[5/6] Launching $APP_NAME for first-time setup..."
+echo "       The app needs to run once so macOS can register it."
+open -a "$APP_NAME"
+sleep 3
+
+# Open Accessibility settings
+echo ""
+echo "[6/6] Setting up Accessibility permission..."
 echo "       This allows $APP_NAME to listen for keyboard shortcuts."
 echo "       Opening System Settings → Accessibility..."
 open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
 echo ""
-echo "       >>> Please toggle ON '$APP_NAME' in the list. <<<"
-echo "       >>> Then you can close System Settings.        <<<"
-
-# Done
-echo ""
-echo "[6/6] Installation complete!"
-echo ""
 echo "============================================"
-echo "  $APP_NAME is ready to use."
 echo ""
-echo "  To open: find '$APP_NAME' in your"
-echo "  Applications folder, or search Spotlight."
+echo "  Almost done! One manual step:"
+echo ""
+echo "  1. Find '$APP_NAME' in the Accessibility list"
+echo "  2. Toggle it ON"
+echo "  3. Restart the app"
 echo ""
 echo "  Shortcut: Ctrl + letter to type IPA symbols"
 echo "  Toggle:   Ctrl + Space to turn on/off"
+echo ""
 echo "============================================"
 echo ""
