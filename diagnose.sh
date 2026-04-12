@@ -1,32 +1,53 @@
 #!/bin/bash
-echo "=== IPA Keyboard Diagnostic ==="
-echo "Date: $(date)"
-echo "macOS: $(sw_vers -productVersion)"
-echo "Arch: $(uname -m)"
-echo "CPU: $(sysctl -n machdep.cpu.brand_string 2>/dev/null)"
 echo ""
+echo "  IPA Keyboard - Diagnostic Report"
+echo "  ================================="
+echo ""
+echo "  macOS:    $(sw_vers -productVersion)"
+echo "  Chip:     $(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo 'unknown')"
+echo "  Arch:     $(uname -m)"
+echo ""
+
 if [ -d "/Applications/IPA Keyboard.app" ]; then
-    echo "App: installed"
-    lipo -info "/Applications/IPA Keyboard.app/Contents/MacOS/ipa-keyboard" 2>/dev/null
-    ls -lh "/Applications/IPA Keyboard.app/Contents/MacOS/ipa-keyboard"
+    BIN="/Applications/IPA Keyboard.app/Contents/MacOS/ipa-keyboard"
+    SIZE=$(ls -lh "$BIN" 2>/dev/null | awk '{print $5}')
+    ARCH=$(lipo -info "$BIN" 2>/dev/null | sed 's/.*: //')
+    echo "  App:      Installed"
+    echo "  Binary:   $SIZE ($ARCH)"
 else
-    echo "App: NOT installed"
+    echo "  App:      NOT installed"
+    echo ""
+    echo "  Nothing to diagnose. Please install first."
+    exit 0
 fi
-echo ""
+
 if pgrep -f "ipa-keyboard" > /dev/null 2>&1; then
-    echo "Running: yes (PID $(pgrep -f ipa-keyboard | head -1))"
+    echo "  Status:   Running (PID $(pgrep -f 'ipa-keyboard' | head -1))"
 else
-    echo "Running: no"
+    echo "  Status:   Not running"
 fi
+
 echo ""
-echo "=== App Log (5 seconds) ==="
+echo "  Checking app startup..."
+echo "  -----------------------"
+echo ""
+
 pkill -f "ipa-keyboard" 2>/dev/null
 sleep 1
-"/Applications/IPA Keyboard.app/Contents/MacOS/ipa-keyboard" 2>/tmp/ipa-diag.log &
+
+"$BIN" 2>/tmp/ipa-diag.log &
 PID=$!
 sleep 5
 kill $PID 2>/dev/null
-cat /tmp/ipa-diag.log
+wait $PID 2>/dev/null
+
+while IFS= read -r line; do
+    echo "  $line"
+done < /tmp/ipa-diag.log
 rm -f /tmp/ipa-diag.log
+
 echo ""
-echo "=== Done ==="
+echo "  ================================="
+echo "  Please screenshot this and send"
+echo "  to the developer."
+echo ""
