@@ -6,6 +6,7 @@ DMG_NAME="IPA_Keyboard.dmg"
 INSTALL_DIR="/Applications"
 GDRIVE_ID="1I44mKnL3hwI1sSn3gDGfUu6H9yItDKOy"
 TMP_DMG="/tmp/$DMG_NAME"
+LOG_FILE="/tmp/ipa-keyboard-install.log"
 
 B="\033[1m"
 D="\033[2m"
@@ -14,6 +15,11 @@ Y="\033[33m"
 C="\033[36m"
 R="\033[31m"
 N="\033[0m"
+
+# Log everything for debugging
+exec > >(tee -a "$LOG_FILE") 2>&1
+echo "=== IPA Keyboard Install Log ===" > "$LOG_FILE"
+echo "Date: $(date)" >> "$LOG_FILE"
 
 clear
 echo ""
@@ -32,6 +38,11 @@ echo ""
 echo -e "  ${C}============================================${N}"
 echo ""
 sleep 1
+
+# -- System Info --
+echo -e "  ${D}  System Info:${N}"
+echo -e "  ${D}  macOS $(sw_vers -productVersion) | $(uname -m) | $(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo 'unknown CPU')${N}"
+echo ""
 
 # -- Step 1 --
 echo -e "  ${B}[1/5]${N} Checking for running instance..."
@@ -64,7 +75,8 @@ if head -c 100 "$TMP_DMG" | grep -qi "html"; then
     rm -f "$TMP_DMG"
     exit 1
 fi
-echo -e "  ${G}  OK${N}   Downloaded successfully."
+DMG_SIZE=$(ls -lh "$TMP_DMG" | awk '{print $5}')
+echo -e "  ${G}  OK${N}   Downloaded successfully. (${DMG_SIZE})"
 
 # -- Step 3 --
 echo ""
@@ -86,13 +98,33 @@ xattr -cr "$INSTALL_DIR/$APP_NAME.app"
 hdiutil detach "$MOUNT_POINT" -quiet
 rm -f "$TMP_DMG"
 tccutil reset Accessibility com.minhphan.ipa-keyboard > /dev/null 2>&1 || true
-echo -e "  ${G}  OK${N}   Installed."
+
+# Verify install
+if [ -d "$INSTALL_DIR/$APP_NAME.app" ]; then
+    BINARY="$INSTALL_DIR/$APP_NAME.app/Contents/MacOS/ipa-keyboard"
+    ARCH=$(lipo -info "$BINARY" 2>/dev/null | sed 's/.*: //' || echo "unknown")
+    BIN_SIZE=$(ls -lh "$BINARY" | awk '{print $5}')
+    echo -e "  ${G}  OK${N}   Installed. (binary: ${BIN_SIZE}, arch: ${ARCH})"
+else
+    echo -e "  ${R}  !!${N}   Installation failed. App not found in $INSTALL_DIR"
+    exit 1
+fi
 
 # -- Step 5 --
 echo ""
 echo -e "  ${B}[5/5]${N} Launching ${B}$APP_NAME${N}..."
 open -a "$APP_NAME"
 sleep 2
+
+# Check if app is running
+if pgrep -f "$APP_NAME" > /dev/null 2>&1; then
+    APP_PID=$(pgrep -f "ipa-keyboard" | head -1)
+    echo -e "  ${G}  OK${N}   App is running. (PID: ${APP_PID})"
+else
+    echo -e "  ${R}  !!${N}   App failed to launch."
+    echo -e "  ${D}        Try running manually: open -a \"$APP_NAME\"${N}"
+    exit 1
+fi
 
 echo ""
 echo -e "  ${Y}--------------------------------------------${N}"
@@ -106,6 +138,7 @@ echo ""
 echo -e "    ${B}1.${N} Click ${C}'Open System Settings'${N}"
 echo -e "    ${B}2.${N} Toggle ${G}ON${N} next to ${B}'IPA Keyboard'${N}"
 echo -e "    ${B}3.${N} That's it! It works ${B}immediately${N}"
+echo -e "       ${D}(app may auto-restart once -- that's normal)${N}"
 echo ""
 echo -e "  ${D}  No restart needed -- just toggle and go.${N}"
 echo ""
@@ -125,4 +158,7 @@ echo ""
 echo -e "  ${D}  Look for the${N} ${B}IPA${N} ${D}icon in your menu bar.${N}"
 echo ""
 echo -e "  ${G}============================================${N}"
+echo ""
+echo -e "  ${D}  Troubleshooting? Send this file to the developer:${N}"
+echo -e "  ${D}  ${LOG_FILE}${N}"
 echo ""
