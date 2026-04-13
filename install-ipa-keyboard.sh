@@ -176,9 +176,11 @@ log_info "Script location: $0"
 log_info "Working directory: $(pwd)"
 
 # Redirect stdout/stderr to both terminal and log
-exec > >(tee -a "$LOG_FILE") 2>&1
+# Log output to file (without using exec/tee which can cause SIGPIPE)
+# Instead, we'll log key events directly using log_* functions
 
-clear
+# Clear screen only if interactive terminal
+[ -t 1 ] && clear
 echo ""
 echo -e "  ${C}============================================${N}"
 echo ""
