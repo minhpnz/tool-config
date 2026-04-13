@@ -29,7 +29,7 @@ init_log() {
 IPA KEYBOARD INSTALLATION LOG
 ================================================================================
 Timestamp:      $(date '+%Y-%m-%d %H:%M:%S %Z')
-Installer Ver:  2.0.0
+Installer Ver:  2.1.0
 App Version:    $APP_VERSION
 ================================================================================
 
@@ -310,28 +310,42 @@ DMG_SIZE=$(ls -lh "$TMP_DMG" | awk '{print $5}')
 log_info "Download verified: $DMG_SIZE"
 echo -e "  ${G}  OK${N}   Downloaded. (${DMG_SIZE}, ${DOWNLOAD_TIME}s)"
 
-# -- Step 3: Remove previous version --
+# -- Step 3: Remove previous version and old variants --
 echo ""
 echo -e "  ${B}[3/6]${N} Preparing installation..."
 log_info "[Step 3] Preparing installation directory"
 
-if [ -d "$INSTALL_DIR/$APP_NAME.app" ]; then
-    log_info "Found previous version, removing..."
-    # Log previous version info
-    PREV_BIN="$INSTALL_DIR/$APP_NAME.app/Contents/MacOS/ipa-keyboard"
-    if [ -f "$PREV_BIN" ]; then
-        log_debug "Previous binary: $(ls -la "$PREV_BIN")"
-        log_debug "Previous arch: $(lipo -info "$PREV_BIN" 2>/dev/null || echo unknown)"
-    fi
+# Clean up old app variants (development builds, renamed apps, etc.)
+# This ensures a clean slate and prevents TCC confusion
+OLD_VARIANTS=(
+    "$INSTALL_DIR/$APP_NAME.app"
+    "$INSTALL_DIR/ipa-keyboard.app"
+    "$INSTALL_DIR/ipa-keyboard-prod.app"
+    "$INSTALL_DIR/ipa-keyboard-dev.app"
+    "$INSTALL_DIR/IPAKeyboard.app"
+)
 
-    echo -e "  ${Y}  >>${N}   Removing previous version..."
-    rm -rf "$INSTALL_DIR/$APP_NAME.app"
-    log_info "Previous version removed"
-    echo -e "  ${G}  OK${N}   Previous version removed."
+REMOVED_COUNT=0
+for variant in "${OLD_VARIANTS[@]}"; do
+    if [ -d "$variant" ]; then
+        log_info "Found old variant: $variant, removing..."
+        echo -e "  ${Y}  >>${N}   Removing $(basename "$variant")..."
+        rm -rf "$variant"
+        REMOVED_COUNT=$((REMOVED_COUNT + 1))
+    fi
+done
+
+if [ $REMOVED_COUNT -gt 0 ]; then
+    log_info "Removed $REMOVED_COUNT old app variant(s)"
+    echo -e "  ${G}  OK${N}   Cleaned up $REMOVED_COUNT old version(s)."
 else
     log_info "No previous version found, fresh install"
     echo -e "  ${G}  OK${N}   Fresh install."
 fi
+
+# Also reset full Accessibility TCC to clear any old entries with different bundle IDs
+log_debug "Resetting Accessibility TCC for clean slate..."
+tccutil reset Accessibility > /dev/null 2>&1 || true
 
 # -- Step 4: Install --
 echo ""
@@ -373,8 +387,8 @@ log_debug "Unmounting and cleaning up..."
 hdiutil detach "$MOUNT_POINT" -quiet 2>> "$LOG_FILE" || true
 rm -f "$TMP_DMG"
 
-# Reset TCC for fresh permission prompt
-log_debug "Resetting TCC for fresh permission..."
+# Reset TCC for our specific bundle ID (full reset already done in step 3)
+log_debug "Resetting TCC for com.minhphan.ipa-keyboard..."
 tccutil reset Accessibility com.minhphan.ipa-keyboard > /dev/null 2>&1 || true
 
 # Verify install
