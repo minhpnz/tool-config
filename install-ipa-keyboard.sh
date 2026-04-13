@@ -208,27 +208,29 @@ log_info "System: macOS $(sw_vers -productVersion), $(uname -m)"
 echo -e "  ${B}[1/6]${N} Checking for running instance..."
 log_info "[Step 1] Checking for running instance"
 
-# Kill any running IPA Keyboard processes (use specific binary name to avoid matching this script)
-RUNNING_PIDS=$(pgrep -f "ipa-keyboard" 2>/dev/null | grep -v "$$" || echo "")
+# Kill any running IPA Keyboard app (match the actual binary path, not script)
+# Use specific pattern to avoid killing this install script
+APP_PATTERN="IPA Keyboard.app"
+RUNNING_PIDS=$(pgrep -f "$APP_PATTERN" 2>/dev/null || echo "")
 
 if [ -n "$RUNNING_PIDS" ]; then
     log_info "Found running instance(s): $RUNNING_PIDS"
     echo -e "  ${Y}  >>${N}   Stopping running instance..."
 
-    # Kill gracefully first
-    pkill -f "ipa-keyboard" 2>/dev/null || true
+    # Kill gracefully first (use exact app name pattern)
+    pkill -f "$APP_PATTERN" 2>/dev/null || true
     sleep 1
 
     # Check if still running, force kill if needed
-    STILL_RUNNING=$(pgrep -f "ipa-keyboard" 2>/dev/null | grep -v "$$" || echo "")
+    STILL_RUNNING=$(pgrep -f "$APP_PATTERN" 2>/dev/null || echo "")
     if [ -n "$STILL_RUNNING" ]; then
         log_warn "Process still running, sending SIGKILL..."
-        pkill -9 -f "ipa-keyboard" 2>/dev/null || true
+        pkill -9 -f "$APP_PATTERN" 2>/dev/null || true
         sleep 1
     fi
 
     # Final check
-    FINAL_CHECK=$(pgrep -f "ipa-keyboard" 2>/dev/null | grep -v "$$" || echo "")
+    FINAL_CHECK=$(pgrep -f "$APP_PATTERN" 2>/dev/null || echo "")
     if [ -n "$FINAL_CHECK" ]; then
         log_error "Could not stop running instance"
         echo -e "  ${R}  !!${N}   Could not stop running instance."
