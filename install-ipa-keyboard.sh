@@ -363,6 +363,11 @@ xattr -cr "$INSTALL_DIR/$APP_NAME.app" 2>> "$LOG_FILE"
 XATTR_STATUS=$?
 log_debug "xattr status: $XATTR_STATUS"
 
+# Ad-hoc sign the app (required for proper TCC display name/icon)
+log_debug "Ad-hoc signing the app..."
+codesign --force --deep --sign - "$INSTALL_DIR/$APP_NAME.app" 2>> "$LOG_FILE" || true
+log_debug "codesign completed"
+
 # Cleanup
 log_debug "Unmounting and cleaning up..."
 hdiutil detach "$MOUNT_POINT" -quiet 2>> "$LOG_FILE" || true
