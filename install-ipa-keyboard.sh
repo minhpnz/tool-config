@@ -40,12 +40,11 @@ echo ""
 sleep 1
 
 # -- System Info --
-echo -e "  ${D}  System Info:${N}"
-echo -e "  ${D}  macOS $(sw_vers -productVersion) | $(uname -m) | $(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo 'unknown CPU')${N}"
+echo -e "  ${D}  macOS $(sw_vers -productVersion) | $(uname -m) | $(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo 'unknown')${N}"
 echo ""
 
 # -- Step 1 --
-echo -e "  ${B}[1/5]${N} Checking for running instance..."
+echo -e "  ${B}[1/6]${N} Checking for running instance..."
 if pgrep -f "$APP_NAME" > /dev/null 2>&1; then
     echo -e "  ${Y}  >>${N}   Stopping running instance..."
     pkill -f "$APP_NAME" 2>/dev/null || true
@@ -57,7 +56,7 @@ fi
 
 # -- Step 2 --
 echo ""
-echo -e "  ${B}[2/5]${N} Downloading latest version..."
+echo -e "  ${B}[2/6]${N} Downloading latest version..."
 echo -e "  ${D}        This may take a moment...${N}"
 COOKIES="/tmp/gdrive_cookies_$$"
 
@@ -76,11 +75,11 @@ if head -c 100 "$TMP_DMG" | grep -qi "html"; then
     exit 1
 fi
 DMG_SIZE=$(ls -lh "$TMP_DMG" | awk '{print $5}')
-echo -e "  ${G}  OK${N}   Downloaded successfully. (${DMG_SIZE})"
+echo -e "  ${G}  OK${N}   Downloaded. (${DMG_SIZE})"
 
 # -- Step 3 --
 echo ""
-echo -e "  ${B}[3/5]${N} Preparing installation..."
+echo -e "  ${B}[3/6]${N} Preparing installation..."
 if [ -d "$INSTALL_DIR/$APP_NAME.app" ]; then
     echo -e "  ${Y}  >>${N}   Removing previous version..."
     rm -rf "$INSTALL_DIR/$APP_NAME.app"
@@ -91,7 +90,7 @@ fi
 
 # -- Step 4 --
 echo ""
-echo -e "  ${B}[4/5]${N} Installing to ${B}$INSTALL_DIR${N}..."
+echo -e "  ${B}[4/6]${N} Installing to ${B}$INSTALL_DIR${N}..."
 MOUNT_POINT=$(hdiutil attach "$TMP_DMG" -nobrowse -noverify | grep '/Volumes/' | sed 's/.*\(\/Volumes\/.*\)/\1/')
 cp -R "$MOUNT_POINT/$APP_NAME.app" "$INSTALL_DIR/"
 xattr -cr "$INSTALL_DIR/$APP_NAME.app"
@@ -104,45 +103,49 @@ if [ -d "$INSTALL_DIR/$APP_NAME.app" ]; then
     BINARY="$INSTALL_DIR/$APP_NAME.app/Contents/MacOS/ipa-keyboard"
     ARCH=$(lipo -info "$BINARY" 2>/dev/null | sed 's/.*: //' || echo "unknown")
     BIN_SIZE=$(ls -lh "$BINARY" | awk '{print $5}')
-    echo -e "  ${G}  OK${N}   Installed. (binary: ${BIN_SIZE}, arch: ${ARCH})"
+    echo -e "  ${G}  OK${N}   Installed. (${BIN_SIZE}, ${ARCH})"
 else
-    echo -e "  ${R}  !!${N}   Installation failed. App not found in $INSTALL_DIR"
+    echo -e "  ${R}  !!${N}   Installation failed."
     exit 1
 fi
 
-# -- Step 5 --
+# -- Step 5: Grant Accessibility --
 echo ""
-echo -e "  ${B}[5/5]${N} Launching ${B}$APP_NAME${N}..."
+echo -e "  ${B}[5/6]${N} Granting Accessibility permission..."
+echo ""
+echo -e "    Launching app to trigger permission popup..."
+open -a "$APP_NAME"
+sleep 3
+
+echo ""
+echo -e "  ${Y}--------------------------------------------${N}"
+echo ""
+echo -e "  ${Y}${B}  Accessibility Permission Required${N}"
+echo ""
+echo -e "    ${B}1.${N} Click ${C}'Open System Settings'${N} on the popup"
+echo -e "    ${B}2.${N} Toggle ${G}ON${N} next to ${B}'IPA Keyboard'${N}"
+echo -e "    ${B}3.${N} Come back here and press ${B}Enter${N}"
+echo ""
+echo -e "  ${Y}--------------------------------------------${N}"
+echo ""
+read -p "    Press Enter after granting permission... " _
+
+# -- Step 6: Restart app with permission --
+echo ""
+echo -e "  ${B}[6/6]${N} Restarting app with permission..."
+pkill -f "$APP_NAME" 2>/dev/null || true
+sleep 1
 open -a "$APP_NAME"
 sleep 2
 
-# Check if app is running
 if pgrep -f "$APP_NAME" > /dev/null 2>&1; then
     APP_PID=$(pgrep -f "ipa-keyboard" | head -1)
     echo -e "  ${G}  OK${N}   App is running. (PID: ${APP_PID})"
 else
     echo -e "  ${R}  !!${N}   App failed to launch."
-    echo -e "  ${D}        Try running manually: open -a \"$APP_NAME\"${N}"
+    echo -e "  ${D}        Try: open -a \"$APP_NAME\"${N}"
     exit 1
 fi
-
-echo ""
-echo -e "  ${Y}--------------------------------------------${N}"
-echo ""
-echo -e "  ${Y}${B}  One more thing!${N}"
-echo ""
-echo -e "    A popup is asking for Accessibility"
-echo -e "    permission. This lets IPA Keyboard"
-echo -e "    read your keystrokes."
-echo ""
-echo -e "    ${B}1.${N} Click ${C}'Open System Settings'${N}"
-echo -e "    ${B}2.${N} Toggle ${G}ON${N} next to ${B}'IPA Keyboard'${N}"
-echo -e "    ${B}3.${N} That's it! It works ${B}immediately${N}"
-echo -e "       ${D}(app may auto-restart once -- that's normal)${N}"
-echo ""
-echo -e "  ${D}  No restart needed -- just toggle and go.${N}"
-echo ""
-echo -e "  ${Y}--------------------------------------------${N}"
 
 echo ""
 echo -e "  ${G}============================================${N}"
@@ -159,6 +162,6 @@ echo -e "  ${D}  Look for the${N} ${B}IPA${N} ${D}icon in your menu bar.${N}"
 echo ""
 echo -e "  ${G}============================================${N}"
 echo ""
-echo -e "  ${D}  Troubleshooting? Send this file to the developer:${N}"
+echo -e "  ${D}  Trouble? Send this file to the developer:${N}"
 echo -e "  ${D}  ${LOG_FILE}${N}"
 echo ""
