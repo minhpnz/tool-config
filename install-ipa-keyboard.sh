@@ -206,29 +206,28 @@ log_info "System: macOS $(sw_vers -productVersion), $(uname -m)"
 echo -e "  ${B}[1/6]${N} Checking for running instance..."
 log_info "[Step 1] Checking for running instance"
 
-# Kill any running IPA Keyboard processes (app, daemon, or related)
-KILLED=0
-for pattern in "$APP_NAME" "ipa-keyboard" "ipa-keyboard-daemon"; do
-    if pgrep -f "$pattern" > /dev/null 2>&1; then
-        KILLED=1
-        log_info "Found running process matching '$pattern', stopping..."
-        pkill -f "$pattern" 2>/dev/null || true
-    fi
-done
+# Kill any running IPA Keyboard processes (use specific binary name to avoid matching this script)
+RUNNING_PIDS=$(pgrep -f "ipa-keyboard" 2>/dev/null | grep -v "$$" || echo "")
 
-if [ "$KILLED" -eq 1 ]; then
+if [ -n "$RUNNING_PIDS" ]; then
+    log_info "Found running instance(s): $RUNNING_PIDS"
     echo -e "  ${Y}  >>${N}   Stopping running instance..."
+
+    # Kill gracefully first
+    pkill -f "ipa-keyboard" 2>/dev/null || true
     sleep 1
 
-    # Verify it's dead, force kill if needed
-    if pgrep -f "ipa-keyboard" > /dev/null 2>&1; then
+    # Check if still running, force kill if needed
+    STILL_RUNNING=$(pgrep -f "ipa-keyboard" 2>/dev/null | grep -v "$$" || echo "")
+    if [ -n "$STILL_RUNNING" ]; then
         log_warn "Process still running, sending SIGKILL..."
         pkill -9 -f "ipa-keyboard" 2>/dev/null || true
         sleep 1
     fi
 
-    # Final verification
-    if pgrep -f "ipa-keyboard" > /dev/null 2>&1; then
+    # Final check
+    FINAL_CHECK=$(pgrep -f "ipa-keyboard" 2>/dev/null | grep -v "$$" || echo "")
+    if [ -n "$FINAL_CHECK" ]; then
         log_error "Could not stop running instance"
         echo -e "  ${R}  !!${N}   Could not stop running instance."
         echo -e "  ${D}        Please quit IPA Keyboard manually and try again.${N}"
